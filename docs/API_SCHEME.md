@@ -782,11 +782,11 @@ POST `/customers` と同一のレスポンス形式。
 
 ```mermaid
 stateDiagram-v2
-    [*] --> DRAFT : 日報作成（下書き保存）
-    DRAFT --> SUBMITTED : 提出\nPATCH /reports/:id/submit\n(SALES)
-    DRAFT --> DRAFT : 編集\nPUT /reports/:id\n(SALES)
-    SUBMITTED --> REVIEWED : 確認済み\nPATCH /reports/:id/review\n(MANAGER)
-    DRAFT --> [*] : 削除\nDELETE /reports/:id\n(SALES)
+    [*] --> DRAFT : 日報作成(下書き保存)
+    DRAFT --> SUBMITTED : 提出 PATCH submit (SALES)
+    DRAFT --> DRAFT : 編集 PUT (SALES)
+    SUBMITTED --> REVIEWED : 確認済み PATCH review (MANAGER)
+    DRAFT --> [*] : 削除 DELETE (SALES)
 ```
 
 ---

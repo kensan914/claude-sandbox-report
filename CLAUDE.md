@@ -8,6 +8,7 @@
 - APIの実装・修正時: @docs/API_SCHEME.md
 - テストの実装・修正時: @docs/TEST_DEFINITION.md
 - DBの実装・修正時: @docs/ER_DIAGRAM.md
+- アーキテクチャの実装・修正時: @docs/ARCHITECTURE.md
 
 ## 要件定義
 
