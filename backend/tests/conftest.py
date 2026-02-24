@@ -23,6 +23,8 @@ async def setup_database():
     yield
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+    # テスト間でコネクションプールの不整合を防ぐためにエンジンを破棄する
+    await test_engine.dispose()
 
 
 @pytest.fixture
