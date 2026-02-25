@@ -4,9 +4,7 @@ import { useState } from "react";
 import { Header } from "@/components/features/layout/Header";
 import { Sidebar } from "@/components/features/layout/Sidebar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-
-// TODO: Replace with real auth hook (e.g. TanStack Query + GET /auth/me)
-const MOCK_USER = { name: "田中太郎", role: "SALES" };
+import { useAuth } from "@/hooks/useAuth";
 
 export default function MainLayout({
   children,
@@ -14,7 +12,7 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const user = MOCK_USER;
+  const { user } = useAuth();
 
   return (
     <div className="flex min-h-screen flex-col">
