@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Header } from "@/components/features/layout/Header";
 import { Sidebar } from "@/components/features/layout/Sidebar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { ToastContainer } from "@/components/ui/toast";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function MainLayout({
@@ -38,6 +39,8 @@ export default function MainLayout({
         {/* Main content */}
         <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>
+
+      <ToastContainer />
     </div>
   );
 }
