@@ -163,6 +163,74 @@ class TestCreateCustomer:
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
+    async def test_担当者名未入力でバリデーションエラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await create_user(db_session)
+        token = create_access_token(user.id)
+
+        async with build_client(db_session, token=token) as client:
+            response = await client.post(
+                "/api/v1/customers",
+                json={
+                    "company_name": "テスト株式会社",
+                },
+            )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    async def test_会社名が200文字超でバリデーションエラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await create_user(db_session)
+        token = create_access_token(user.id)
+
+        async with build_client(db_session, token=token) as client:
+            response = await client.post(
+                "/api/v1/customers",
+                json={
+                    "company_name": "あ" * 201,
+                    "contact_name": "担当者",
+                },
+            )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    async def test_担当者名が100文字超でバリデーションエラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await create_user(db_session)
+        token = create_access_token(user.id)
+
+        async with build_client(db_session, token=token) as client:
+            response = await client.post(
+                "/api/v1/customers",
+                json={
+                    "company_name": "テスト株式会社",
+                    "contact_name": "あ" * 101,
+                },
+            )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    async def test_住所が500文字超でバリデーションエラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await create_user(db_session)
+        token = create_access_token(user.id)
+
+        async with build_client(db_session, token=token) as client:
+            response = await client.post(
+                "/api/v1/customers",
+                json={
+                    "company_name": "テスト株式会社",
+                    "contact_name": "担当者",
+                    "address": "あ" * 501,
+                },
+            )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
 
 class TestGetCustomerDetail:
     async def test_顧客詳細を取得できること(self, db_session: AsyncSession):
@@ -230,6 +298,76 @@ class TestUpdateCustomer:
             )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    async def test_会社名未入力でバリデーションエラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await create_user(db_session)
+        customer = await create_customer(db_session)
+        token = create_access_token(user.id)
+
+        async with build_client(db_session, token=token) as client:
+            response = await client.put(
+                f"/api/v1/customers/{customer.id}",
+                json={
+                    "contact_name": "担当者",
+                },
+            )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    async def test_担当者名未入力でバリデーションエラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await create_user(db_session)
+        customer = await create_customer(db_session)
+        token = create_access_token(user.id)
+
+        async with build_client(db_session, token=token) as client:
+            response = await client.put(
+                f"/api/v1/customers/{customer.id}",
+                json={
+                    "company_name": "テスト株式会社",
+                },
+            )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    async def test_会社名が200文字超でバリデーションエラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await create_user(db_session)
+        customer = await create_customer(db_session)
+        token = create_access_token(user.id)
+
+        async with build_client(db_session, token=token) as client:
+            response = await client.put(
+                f"/api/v1/customers/{customer.id}",
+                json={
+                    "company_name": "あ" * 201,
+                    "contact_name": "担当者",
+                },
+            )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    async def test_担当者名が100文字超でバリデーションエラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await create_user(db_session)
+        customer = await create_customer(db_session)
+        token = create_access_token(user.id)
+
+        async with build_client(db_session, token=token) as client:
+            response = await client.put(
+                f"/api/v1/customers/{customer.id}",
+                json={
+                    "company_name": "テスト株式会社",
+                    "contact_name": "あ" * 101,
+                },
+            )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 class TestDeleteCustomer:
