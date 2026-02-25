@@ -90,6 +90,10 @@ class ReportService:
         self, request: ReportCreateRequest, current_user: User
     ) -> DailyReport:
         """日報を作成する。"""
+        # 営業担当者のみ作成可能
+        if current_user.role != UserRole.SALES:
+            raise ForbiddenError(message="営業担当者のみ日報を作成できます")
+
         # 未来日チェック
         self._validate_report_date(request.report_date)
 
