@@ -4,40 +4,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_role
-from app.core.security import COOKIE_NAME, create_access_token, hash_password
+from app.core.security import COOKIE_NAME, create_access_token
 from app.models.user import User, UserRole
-
-
-async def _create_user(db: AsyncSession, *, role: UserRole = UserRole.SALES) -> User:
-    """テスト用ユーザーを作成するヘルパー。"""
-    user = User(
-        name="テストユーザー",
-        email=f"test-{role.value.lower()}@example.com",
-        password_hash=hash_password("password123"),
-        role=role,
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return user
+from tests.helpers import create_user
 
 
 def _build_app(db_session: AsyncSession, *, endpoint_dependency) -> FastAPI:
     """テスト用のFastAPIアプリを構築するヘルパー。"""
-    app = FastAPI()
+    test_app = FastAPI()
 
     async def _override_get_db():
         yield db_session
 
-    app.dependency_overrides[get_db] = _override_get_db
+    test_app.dependency_overrides[get_db] = _override_get_db
 
-    @app.get("/test")
+    @test_app.get("/test")
     async def _endpoint(
         current_user: User = Depends(endpoint_dependency),  # noqa: B008
     ):
         return {"id": current_user.id, "role": current_user.role}
 
-    return app
+    return test_app
 
 
 def _build_client(app: FastAPI, *, token: str | None = None) -> httpx.AsyncClient:
@@ -56,7 +43,7 @@ class TestGetCurrentUser:
     async def test_有効なトークンでユーザーが取得できること(
         self, db_session: AsyncSession
     ):
-        user = await _create_user(db_session)
+        user = await create_user(db_session)
         token = create_access_token(user_id=user.id)
 
         app = _build_app(db_session, endpoint_dependency=get_current_user)
@@ -94,7 +81,7 @@ class TestGetCurrentUser:
 
 class TestRequireRole:
     async def test_正しいロールでアクセスできること(self, db_session: AsyncSession):
-        user = await _create_user(db_session, role=UserRole.MANAGER)
+        user = await create_user(db_session, role=UserRole.MANAGER)
         token = create_access_token(user_id=user.id)
 
         app = _build_app(db_session, endpoint_dependency=require_role(UserRole.MANAGER))
@@ -105,7 +92,7 @@ class TestRequireRole:
         assert response.json()["role"] == "MANAGER"
 
     async def test_異なるロールで403エラーが返ること(self, db_session: AsyncSession):
-        user = await _create_user(db_session, role=UserRole.SALES)
+        user = await create_user(db_session, role=UserRole.SALES)
         token = create_access_token(user_id=user.id)
 
         app = _build_app(db_session, endpoint_dependency=require_role(UserRole.MANAGER))

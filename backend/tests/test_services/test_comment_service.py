@@ -4,37 +4,18 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenError, NotFoundError, ValidationError
-from app.core.security import hash_password
 from app.models.daily_report import DailyReport, ReportStatus
-from app.models.user import User, UserRole
+from app.models.user import UserRole
 from app.repositories.comment_repository import CommentRepository
 from app.repositories.report_repository import ReportRepository
 from app.schemas.comment import CommentCreateRequest
 from app.services.comment_service import CommentService
-
-
-async def _create_user(
-    db: AsyncSession,
-    *,
-    email: str = "tanaka@example.com",
-    role: UserRole = UserRole.SALES,
-    name: str = "田中太郎",
-) -> User:
-    user = User(
-        name=name,
-        email=email,
-        password_hash=hash_password("password123"),
-        role=role,
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return user
+from tests.helpers import create_user
 
 
 async def _create_report(
     db: AsyncSession,
-    user: User,
+    user,
     *,
     report_date: date | None = None,
     status: ReportStatus = ReportStatus.SUBMITTED,
@@ -62,8 +43,8 @@ class TestCreateComment:
     async def test_MANAGERがSUBMITTED日報にPROBLEMコメントを投稿できること(
         self, db_session: AsyncSession
     ):
-        user = await _create_user(db_session)
-        manager = await _create_user(
+        user = await create_user(db_session)
+        manager = await create_user(
             db_session,
             email="manager@example.com",
             name="部長",
@@ -83,8 +64,8 @@ class TestCreateComment:
     async def test_MANAGERがSUBMITTED日報にPLANコメントを投稿できること(
         self, db_session: AsyncSession
     ):
-        user = await _create_user(db_session)
-        manager = await _create_user(
+        user = await create_user(db_session)
+        manager = await create_user(
             db_session,
             email="manager@example.com",
             name="部長",
@@ -102,16 +83,14 @@ class TestCreateComment:
     async def test_MANAGERがREVIEWED日報にコメントを投稿できること(
         self, db_session: AsyncSession
     ):
-        user = await _create_user(db_session)
-        manager = await _create_user(
+        user = await create_user(db_session)
+        manager = await create_user(
             db_session,
             email="manager@example.com",
             name="部長",
             role=UserRole.MANAGER,
         )
-        report = await _create_report(
-            db_session, user, status=ReportStatus.REVIEWED
-        )
+        report = await _create_report(db_session, user, status=ReportStatus.REVIEWED)
         service = _build_service(db_session)
         request = CommentCreateRequest(target="PROBLEM", content="追加コメント")
 
@@ -122,7 +101,7 @@ class TestCreateComment:
     async def test_SALESがコメントを投稿するとForbiddenErrorが発生すること(
         self, db_session: AsyncSession
     ):
-        user = await _create_user(db_session)
+        user = await create_user(db_session)
         report = await _create_report(db_session, user)
         service = _build_service(db_session)
         request = CommentCreateRequest(target="PROBLEM", content="テスト")
@@ -135,16 +114,14 @@ class TestCreateComment:
     async def test_DRAFT日報にコメントするとForbiddenErrorが発生すること(
         self, db_session: AsyncSession
     ):
-        user = await _create_user(db_session)
-        manager = await _create_user(
+        user = await create_user(db_session)
+        manager = await create_user(
             db_session,
             email="manager@example.com",
             name="部長",
             role=UserRole.MANAGER,
         )
-        report = await _create_report(
-            db_session, user, status=ReportStatus.DRAFT
-        )
+        report = await _create_report(db_session, user, status=ReportStatus.DRAFT)
         service = _build_service(db_session)
         request = CommentCreateRequest(target="PROBLEM", content="テスト")
 
@@ -156,8 +133,8 @@ class TestCreateComment:
     async def test_不正なtargetでValidationErrorが発生すること(
         self, db_session: AsyncSession
     ):
-        user = await _create_user(db_session)
-        manager = await _create_user(
+        user = await create_user(db_session)
+        manager = await create_user(
             db_session,
             email="manager@example.com",
             name="部長",
@@ -175,7 +152,7 @@ class TestCreateComment:
     async def test_存在しない日報IDでNotFoundErrorが発生すること(
         self, db_session: AsyncSession
     ):
-        manager = await _create_user(
+        manager = await create_user(
             db_session,
             email="manager@example.com",
             name="部長",
