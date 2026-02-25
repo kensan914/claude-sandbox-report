@@ -1,4 +1,4 @@
-"""日報エンドポイント（CRUD）。"""
+"""日報エンドポイント（CRUD + コメント）。"""
 
 from datetime import date
 
@@ -8,10 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
+from app.repositories.comment_repository import CommentRepository
 from app.repositories.report_repository import ReportRepository
 from app.repositories.visit_record_repository import (
     VisitRecordRepository,
 )
+from app.schemas.comment import CommentCreateRequest, CommentCreateResponse
 from app.schemas.common import DataResponse, create_paginated_response
 from app.schemas.report import (
     CommentResponse,
@@ -26,6 +28,7 @@ from app.schemas.report import (
     VisitRecordDetailResponse,
     VisitRecordSummaryResponse,
 )
+from app.services.comment_service import CommentService
 from app.services.report_service import ReportService
 
 router = APIRouter(prefix="/reports", tags=["日報"])
@@ -36,6 +39,13 @@ def _get_report_service(
 ) -> ReportService:
     """日報サービスの依存注入。"""
     return ReportService(ReportRepository(db), VisitRecordRepository(db))
+
+
+def _get_comment_service(
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> CommentService:
+    """コメントサービスの依存注入。"""
+    return CommentService(CommentRepository(db), ReportRepository(db))
 
 
 def _format_visited_at(visited_at) -> str:
@@ -259,5 +269,29 @@ async def review_report(
         data=ReportReviewResponse(
             id=report.id,
             status=report.status.value,
+        )
+    )
+
+
+@router.post(
+    "/{report_id}/comments",
+    status_code=201,
+    response_model=DataResponse[CommentCreateResponse],
+)
+async def create_comment(
+    report_id: int,
+    request: CommentCreateRequest,
+    service: CommentService = Depends(_get_comment_service),  # noqa: B008
+    current_user: User = Depends(get_current_user),  # noqa: B008
+):
+    """コメントを投稿する。"""
+    comment = await service.create(report_id, request, current_user)
+    return DataResponse(
+        data=CommentCreateResponse(
+            id=comment.id,
+            target=comment.target.value,
+            manager=SalespersonResponse.model_validate(comment.manager),
+            content=comment.content,
+            created_at=comment.created_at,
         )
     )
