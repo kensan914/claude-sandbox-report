@@ -33,9 +33,7 @@ class TestAppErrorHandler:
         @app.get("/test/validation-error")
         async def _():
             raise ValidationError(
-                details=[
-                    {"field": "email", "message": "メール形式で入力してください"}
-                ]
+                details=[{"field": "email", "message": "メール形式で入力してください"}]
             )
 
         async with test_client as client:
