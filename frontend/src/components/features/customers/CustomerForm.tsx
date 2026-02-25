@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -13,6 +13,8 @@ import {
   type CreateCustomerRequest,
   useCreateCustomer,
 } from "@/hooks/useCreateCustomer";
+import { useDeleteCustomer } from "@/hooks/useDeleteCustomer";
+import { useUpdateCustomer } from "@/hooks/useUpdateCustomer";
 import { customerSchema } from "@/lib/validations/customer";
 
 /** フォームの入力値型（optional フィールドを含む） */
@@ -35,7 +37,10 @@ const inputClass =
 
 export function CustomerForm({ initialData }: CustomerFormProps) {
   const router = useRouter();
+  const isEditMode = !!initialData;
   const createCustomer = useCreateCustomer();
+  const updateCustomer = useUpdateCustomer(initialData?.id ?? 0);
+  const deleteCustomer = useDeleteCustomer(initialData?.id ?? 0);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const {
@@ -71,7 +76,8 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
         phone: data.phone || undefined,
         email: data.email || undefined,
       };
-      createCustomer.mutate(request, {
+      const mutation = isEditMode ? updateCustomer : createCustomer;
+      mutation.mutate(request, {
         onError: (error) => {
           if (error instanceof ApiError) {
             setApiError(error.message);
@@ -79,8 +85,22 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
         },
       });
     },
-    [createCustomer],
+    [isEditMode, createCustomer, updateCustomer],
   );
+
+  const handleDelete = useCallback(() => {
+    if (!window.confirm("この顧客を削除しますか？この操作は取り消せません。")) {
+      return;
+    }
+    setApiError(null);
+    deleteCustomer.mutate(undefined, {
+      onError: (error) => {
+        if (error instanceof ApiError) {
+          setApiError(error.message);
+        }
+      },
+    });
+  }, [deleteCustomer]);
 
   const handleCancel = useCallback(() => {
     if (isDirty) {
@@ -91,7 +111,10 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
     router.push("/customers");
   }, [isDirty, router]);
 
-  const isSubmitting = createCustomer.isPending;
+  const isSubmitting =
+    createCustomer.isPending ||
+    updateCustomer.isPending ||
+    deleteCustomer.isPending;
 
   return (
     <form
@@ -191,6 +214,23 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
         >
           キャンセル
         </Button>
+
+        {isEditMode && (
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={isSubmitting}
+            onClick={handleDelete}
+            className="ml-auto"
+          >
+            {deleteCustomer.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Trash2 className="size-4" />
+            )}
+            削除
+          </Button>
+        )}
       </div>
     </form>
   );
