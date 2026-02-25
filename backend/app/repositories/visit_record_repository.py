@@ -19,5 +19,5 @@ class VisitRecordRepository:
     async def bulk_create(self, records: list[VisitRecord]) -> list[VisitRecord]:
         """訪問記録を一括作成する。"""
         self.db.add_all(records)
-        await self.db.flush()
+        await self.db.commit()
         return records

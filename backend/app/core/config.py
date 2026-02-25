@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 
+    # Cookie
+    cookie_secure: bool = False
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

@@ -7,7 +7,7 @@ from app.core.config import settings
 
 # Cookie 設定の定数
 COOKIE_NAME = "access_token"
-COOKIE_PATH = "/api"
+COOKIE_PATH = "/"
 COOKIE_SAMESITE = "lax"
 
 
