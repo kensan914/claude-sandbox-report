@@ -13,7 +13,7 @@ graph TB
         Middleware["Middleware<br>(認証ルートガード)"]
     end
 
-    subgraph Render["Render"]
+    subgraph Railway["Railway"]
         FastAPI["FastAPI<br>(Python 3.14)"]
         Alembic["Alembic<br>(マイグレーション)"]
     end
@@ -40,7 +40,7 @@ graph TB
 | 区分 | 選択 | 備考 |
 | --- | --- | --- |
 | FE ホスティング | Vercel | Next.js 公式推奨 |
-| BE ホスティング | Render | Python ネイティブ対応・設定最小 |
+| BE ホスティング | Railway | Python ネイティブ対応・Dockerfile デプロイ対応 |
 | データベース | Supabase (PostgreSQL) | マネージド PostgreSQL・Supavisor によるコネクションプーリング |
 | リポジトリ構成 | モノレポ | frontend/ と backend/ を同一リポジトリで管理 |
 | CI/CD | GitHub Actions | lint・テスト・デプロイの自動化 |
@@ -296,7 +296,7 @@ components/
 sequenceDiagram
     participant B as ブラウザ
     participant N as Next.js (Vercel)
-    participant F as FastAPI (Render)
+    participant F as FastAPI (Railway)
     participant D as PostgreSQL (Supabase)
 
     Note over B,D: ログイン
@@ -350,7 +350,7 @@ graph LR
         FE["Next.js 15<br>フロントエンド"]
     end
 
-    subgraph RenderCloud["Render"]
+    subgraph RailwayCloud["Railway"]
         BE["FastAPI<br>バックエンド"]
     end
 
@@ -361,7 +361,7 @@ graph LR
 
     Repo -->|push to main| Actions
     Actions -->|frontend/ の変更| Vercel
-    Actions -->|backend/ の変更| RenderCloud
+    Actions -->|backend/ の変更| RailwayCloud
     FE -->|REST API| BE
     BE -->|DATABASE_URL| Pool
     Pool --> DB
@@ -373,13 +373,13 @@ graph LR
 | --- | --- |
 | ローカル開発 | `.env` ファイル（`.gitignore` に追加） |
 | Vercel | Vercel Dashboard の Environment Variables |
-| Render | Render Dashboard の Environment Variables |
+| Railway | Railway Dashboard の Variables |
 
 | 変数名 | 設定先 | 説明 |
 | --- | --- | --- |
-| `DATABASE_URL` | Render | Supabase PostgreSQL の接続文字列 |
-| `SECRET_KEY` | Render | JWT 署名用シークレットキー |
-| `ALLOWED_ORIGINS` | Render | CORS 許可オリジン（Vercel の URL） |
+| `DATABASE_URL` | Railway | Supabase PostgreSQL の接続文字列 |
+| `SECRET_KEY` | Railway | JWT 署名用シークレットキー |
+| `ALLOWED_ORIGINS` | Railway | CORS 許可オリジン（Vercel の URL） |
 | `NEXT_PUBLIC_API_URL` | Vercel | バックエンド API のベース URL |
 
 ---
@@ -521,7 +521,7 @@ graph TB
 
     subgraph CD["CD（main push 時）"]
         DeployFE["Vercel デプロイ<br>(自動)"]
-        DeployBE["Render デプロイ<br>(自動)"]
+        DeployBE["Railway デプロイ<br>(自動)"]
         Migrate["DB マイグレーション"]
     end
 
@@ -548,5 +548,5 @@ graph TB
 | ステップ | 実行内容 |
 | --- | --- |
 | Vercel デプロイ | Vercel の GitHub Integration により `frontend/` の変更を自動デプロイ |
-| Render デプロイ | Render の GitHub Integration により `backend/` の変更を自動デプロイ |
-| DB マイグレーション | Render のデプロイ前コマンドで `alembic upgrade head` を実行 |
+| Railway デプロイ | Railway の GitHub Integration により `backend/` の変更を自動デプロイ |
+| DB マイグレーション | Railway のデプロイコマンドで `alembic upgrade head` を実行 |
