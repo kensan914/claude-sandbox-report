@@ -40,3 +40,25 @@ export function useCustomers(
     placeholderData: keepPreviousData,
   });
 }
+
+export type CustomerSearchParams = {
+  company_name?: string;
+  contact_name?: string;
+  sort?: string;
+  order?: string;
+  page?: number;
+  per_page?: number;
+};
+
+export function useCustomerList(params: CustomerSearchParams) {
+  return useQuery({
+    queryKey: ["customers", "list", params],
+    queryFn: () =>
+      apiClient.get<CustomersResponse>("/customers", {
+        params: {
+          ...params,
+        } as Record<string, string | number | undefined>,
+      }),
+    placeholderData: keepPreviousData,
+  });
+}
