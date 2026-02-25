@@ -35,7 +35,7 @@ function getDefaultSearchValues(): SearchValues {
 }
 
 export default function ReportsPage() {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [searchValues, setSearchValues] = useState<SearchValues>(
     getDefaultSearchValues,
   );
@@ -90,7 +90,21 @@ export default function ReportsPage() {
   const pagination = data?.pagination;
   const pageOffset = ((pagination?.current_page ?? 1) - 1) * PER_PAGE;
 
-  if (!user) return null;
+  if (isAuthLoading || !user) {
+    return (
+      <div className="space-y-6">
+        <div className="h-9 w-32 rounded bg-muted animate-pulse" />
+        <div className="h-24 rounded-lg border bg-muted/30 animate-pulse" />
+        <div className="rounded-lg border">
+          <div className="space-y-4 p-4">
+            {["sk-a", "sk-b", "sk-c"].map((key) => (
+              <div key={key} className="h-8 rounded bg-muted animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -19,14 +19,16 @@ export function useAuth() {
     retry: false,
   });
 
+  const user = query.data?.data ?? null;
+
   useEffect(() => {
-    if (query.data) {
-      setAuthUser(query.data.data as AuthUser);
+    if (user) {
+      setAuthUser(user as AuthUser);
     }
-  }, [query.data, setAuthUser]);
+  }, [user, setAuthUser]);
 
   return {
-    user: query.data?.data ?? null,
+    user,
     isLoading: query.isLoading,
   };
 }
