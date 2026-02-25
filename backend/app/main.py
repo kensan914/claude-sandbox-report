@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.v1.auth import router as auth_router
 from app.core.config import settings
 from app.core.exceptions import AppError
 from app.schemas.common import ErrorBody, ErrorResponse
@@ -30,9 +31,7 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     """カスタム例外をAPI仕様書形式のJSONレスポンスに変換する。"""
     details = None
     if exc.details:
-        details = [
-            {"field": d["field"], "message": d["message"]} for d in exc.details
-        ]
+        details = [{"field": d["field"], "message": d["message"]} for d in exc.details]
 
     error_response = ErrorResponse(
         error=ErrorBody(
@@ -64,6 +63,9 @@ async def catch_unhandled_exceptions(request: Request, call_next):
             status_code=500,
             content=error_response.model_dump(exclude_none=True),
         )
+
+
+app.include_router(auth_router, prefix="/api/v1")
 
 
 @app.get("/health")
