@@ -140,7 +140,22 @@ gh pr create --base main --title "<PRタイトル>" --body "closes #$ARGUMENTS"
 - Issue に記載された受け入れ条件を 1 つずつ明示的に検証する
 - 検証結果を表形式（条件・結果・詳細）でまとめる
 
-## 6. GitHub の完了処理
+## 6. PR レビュー・マージ・ローカル最新化
+
+- PR の差分（`gh pr diff`）を確認し、実装に問題がないか自分でレビューする
+- 問題なければ PR をマージする
+
+  ```bash
+  gh pr merge --merge --delete-branch
+  ```
+
+- ローカルを main ブランチに切り替えて最新化する
+
+  ```bash
+  git checkout main && git pull
+  ```
+
+## 7. GitHub の完了処理
 
 - 検証結果サマリーを Issue にコメントとして投稿する（`gh issue comment`）
 - Issue を closed/completed でクローズする（`gh issue close --reason completed`）
