@@ -11,6 +11,7 @@ const inputClass =
 type VisitRecordRowProps = {
   visitContent: string;
   visitedAt: string;
+  initialCustomerName?: string;
   customerIdError?: string;
   visitContentError?: string;
   visitedAtError?: string;
@@ -23,6 +24,7 @@ type VisitRecordRowProps = {
 export function VisitRecordRow({
   visitContent,
   visitedAt,
+  initialCustomerName,
   customerIdError,
   visitContentError,
   visitedAtError,
@@ -33,7 +35,9 @@ export function VisitRecordRow({
 }: VisitRecordRowProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedCustomerName, setSelectedCustomerName] = useState("");
+  const [selectedCustomerName, setSelectedCustomerName] = useState(
+    initialCustomerName ?? "",
+  );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
