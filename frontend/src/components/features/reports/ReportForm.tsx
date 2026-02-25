@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Save, Send } from "lucide-react";
+import { Loader2, Plus, Save, Send, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
@@ -14,10 +14,18 @@ import {
   type CreateReportRequest,
   useCreateReport,
 } from "@/hooks/useCreateReport";
+import { useDeleteReport } from "@/hooks/useDeleteReport";
+import { useUpdateReport } from "@/hooks/useUpdateReport";
+import type { Schemas } from "@/lib/api-types";
 import { reportDraftSchema, reportSchema } from "@/lib/validations";
 
 /** フォームの入力値型（optional フィールドを含む） */
 type ReportFormInput = z.input<typeof reportSchema>;
+
+type ReportFormProps = {
+  /** 編集モード時の既存日報データ */
+  initialData?: Schemas["ReportDetailResponse"];
+};
 
 const inputClass =
   "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
@@ -27,10 +35,23 @@ function getTodayString(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
-export function ReportForm() {
+export function ReportForm({ initialData }: ReportFormProps) {
   const router = useRouter();
+  const isEditMode = !!initialData;
   const createReport = useCreateReport();
+  const updateReport = useUpdateReport(initialData?.id ?? 0);
+  const deleteReport = useDeleteReport(initialData?.id ?? 0);
   const [apiError, setApiError] = useState<string | null>(null);
+
+  // 編集時の訪問記録初期顧客名を保持
+  const [initialCustomerNames] = useState<Record<number, string>>(() => {
+    if (!initialData) return {};
+    const names: Record<number, string> = {};
+    initialData.visit_records.forEach((vr, i) => {
+      names[i] = vr.customer.company_name;
+    });
+    return names;
+  });
 
   const {
     register,
@@ -42,12 +63,23 @@ export function ReportForm() {
     trigger,
   } = useForm<ReportFormInput>({
     resolver: zodResolver(reportSchema),
-    defaultValues: {
-      report_date: getTodayString(),
-      visit_records: [],
-      problem: "",
-      plan: "",
-    },
+    defaultValues: initialData
+      ? {
+          report_date: initialData.report_date,
+          visit_records: initialData.visit_records.map((vr) => ({
+            customer_id: String(vr.customer.id),
+            visit_content: vr.visit_content,
+            visited_at: vr.visited_at,
+          })),
+          problem: initialData.problem ?? "",
+          plan: initialData.plan ?? "",
+        }
+      : {
+          report_date: getTodayString(),
+          visit_records: [],
+          problem: "",
+          plan: "",
+        },
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -77,25 +109,25 @@ export function ReportForm() {
     [],
   );
 
+  const mutation = isEditMode ? updateReport : createReport;
+
   const handleDraftSave = useCallback(async () => {
     setApiError(null);
-    // Draft: only report_date is required
     const values = watch();
     const result = reportDraftSchema.safeParse(values);
     if (!result.success) {
-      // Trigger validation to show errors
       await trigger("report_date");
       return;
     }
     const request = buildRequest(result.data as ReportFormInput, "DRAFT");
-    createReport.mutate(request, {
+    mutation.mutate(request, {
       onError: (error) => {
         if (error instanceof ApiError) {
           setApiError(error.message);
         }
       },
     });
-  }, [watch, trigger, buildRequest, createReport]);
+  }, [watch, trigger, buildRequest, mutation]);
 
   const handleSubmitReport = useCallback(
     async (data: ReportFormInput) => {
@@ -106,7 +138,7 @@ export function ReportForm() {
         return;
       }
       const request = buildRequest(data, "SUBMITTED");
-      createReport.mutate(request, {
+      mutation.mutate(request, {
         onError: (error) => {
           if (error instanceof ApiError) {
             setApiError(error.message);
@@ -114,7 +146,7 @@ export function ReportForm() {
         },
       });
     },
-    [buildRequest, createReport],
+    [buildRequest, mutation],
   );
 
   const handleCancel = useCallback(() => {
@@ -123,10 +155,27 @@ export function ReportForm() {
         return;
       }
     }
-    router.push("/reports");
-  }, [isDirty, router]);
+    if (isEditMode) {
+      router.push(`/reports/${initialData.id}`);
+    } else {
+      router.push("/reports");
+    }
+  }, [isDirty, router, isEditMode, initialData]);
 
-  const isSubmitting = createReport.isPending;
+  const handleDelete = useCallback(() => {
+    if (!window.confirm("この日報を削除しますか？この操作は取り消せません。")) {
+      return;
+    }
+    deleteReport.mutate(undefined, {
+      onError: (error) => {
+        if (error instanceof ApiError) {
+          setApiError(error.message);
+        }
+      },
+    });
+  }, [deleteReport]);
+
+  const isSubmitting = mutation.isPending || deleteReport.isPending;
 
   return (
     <form
@@ -175,6 +224,7 @@ export function ReportForm() {
               key={field.id}
               visitContent={watch(`visit_records.${index}.visit_content`) ?? ""}
               visitedAt={watch(`visit_records.${index}.visited_at`) ?? ""}
+              initialCustomerName={initialCustomerNames[index]}
               customerIdError={vrErrors?.customer_id?.message}
               visitContentError={vrErrors?.visit_content?.message}
               visitedAtError={vrErrors?.visited_at?.message}
@@ -270,6 +320,23 @@ export function ReportForm() {
         >
           キャンセル
         </Button>
+
+        {isEditMode && (
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={isSubmitting}
+            onClick={handleDelete}
+            className="ml-auto"
+          >
+            {deleteReport.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Trash2 className="size-4" />
+            )}
+            削除
+          </Button>
+        )}
       </div>
     </form>
   );
