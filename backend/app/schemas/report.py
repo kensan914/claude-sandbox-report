@@ -137,6 +137,25 @@ class ReportDetailResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ReportSubmitResponse(BaseModel):
+    """日報提出レスポンス。"""
+
+    id: int
+    status: str
+    submitted_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ReportReviewResponse(BaseModel):
+    """日報確認済みレスポンス。"""
+
+    id: int
+    status: str
+
+    model_config = {"from_attributes": True}
+
+
 class ReportCreateUpdateResponse(BaseModel):
     """日報作成・更新レスポンス。"""
 

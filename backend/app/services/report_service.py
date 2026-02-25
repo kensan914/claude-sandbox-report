@@ -174,6 +174,37 @@ class ReportService:
         report = await self._get_editable_report(report_id, current_user)
         await self.report_repository.delete(report)
 
+    async def submit(self, report_id: int, current_user: User) -> DailyReport:
+        """日報を提出する（DRAFT → SUBMITTED）。"""
+        report = await self.report_repository.find_by_id(report_id)
+        if report is None:
+            raise NotFoundError(message="日報が見つかりません")
+
+        if report.salesperson_id != current_user.id:
+            raise ForbiddenError(message="自分の日報のみ提出できます")
+
+        if report.status != ReportStatus.DRAFT:
+            raise ConflictError(message="下書きの日報のみ提出できます")
+
+        report.status = ReportStatus.SUBMITTED
+        report.submitted_at = datetime.now(UTC).replace(tzinfo=None)
+        return await self.report_repository.update(report)
+
+    async def review(self, report_id: int, current_user: User) -> DailyReport:
+        """日報を確認済みにする（SUBMITTED → REVIEWED）。"""
+        if current_user.role != UserRole.MANAGER:
+            raise ForbiddenError(message="上長のみ確認済みにできます")
+
+        report = await self.report_repository.find_by_id(report_id)
+        if report is None:
+            raise NotFoundError(message="日報が見つかりません")
+
+        if report.status != ReportStatus.SUBMITTED:
+            raise ConflictError(message="提出済みの日報のみ確認済みにできます")
+
+        report.status = ReportStatus.REVIEWED
+        return await self.report_repository.update(report)
+
     # --- プライベートメソッド ---
 
     async def _get_editable_report(
