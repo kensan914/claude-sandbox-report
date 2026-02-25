@@ -19,6 +19,8 @@ from app.schemas.report import (
     ReportCreateUpdateResponse,
     ReportDetailResponse,
     ReportListItemResponse,
+    ReportReviewResponse,
+    ReportSubmitResponse,
     ReportUpdateRequest,
     SalespersonResponse,
     VisitRecordDetailResponse,
@@ -220,3 +222,42 @@ async def delete_report(
 ):
     """日報を削除する。"""
     await service.delete(report_id, current_user)
+
+
+@router.patch(
+    "/{report_id}/submit",
+    response_model=DataResponse[ReportSubmitResponse],
+)
+async def submit_report(
+    report_id: int,
+    service: ReportService = Depends(_get_report_service),  # noqa: B008
+    current_user: User = Depends(get_current_user),  # noqa: B008
+):
+    """日報を提出する（DRAFT → SUBMITTED）。"""
+    report = await service.submit(report_id, current_user)
+    return DataResponse(
+        data=ReportSubmitResponse(
+            id=report.id,
+            status=report.status.value,
+            submitted_at=report.submitted_at,
+        )
+    )
+
+
+@router.patch(
+    "/{report_id}/review",
+    response_model=DataResponse[ReportReviewResponse],
+)
+async def review_report(
+    report_id: int,
+    service: ReportService = Depends(_get_report_service),  # noqa: B008
+    current_user: User = Depends(get_current_user),  # noqa: B008
+):
+    """日報を確認済みにする（SUBMITTED → REVIEWED）。"""
+    report = await service.review(report_id, current_user)
+    return DataResponse(
+        data=ReportReviewResponse(
+            id=report.id,
+            status=report.status.value,
+        )
+    )

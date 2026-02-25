@@ -480,3 +480,130 @@ class TestDeleteReport:
             response = await client.delete("/api/v1/reports/99999")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+class TestSubmitReport:
+    async def test_DRAFT日報を提出できること(self, db_session: AsyncSession):
+        user = await _create_user(db_session)
+        report = await _create_report(db_session, user)
+        token = create_access_token(user.id)
+
+        async with _build_client(db_session, token=token) as client:
+            response = await client.patch(f"/api/v1/reports/{report.id}/submit")
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()["data"]
+        assert data["id"] == report.id
+        assert data["status"] == "SUBMITTED"
+        assert data["submitted_at"] is not None
+
+    async def test_SUBMITTED日報を提出すると409エラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await _create_user(db_session)
+        report = await _create_report(
+            db_session, user, status_val=ReportStatus.SUBMITTED
+        )
+        token = create_access_token(user.id)
+
+        async with _build_client(db_session, token=token) as client:
+            response = await client.patch(f"/api/v1/reports/{report.id}/submit")
+
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert response.json()["error"]["code"] == "CONFLICT"
+
+    async def test_他人の日報を提出すると403エラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user1 = await _create_user(db_session)
+        user2 = await _create_user(
+            db_session, email="other@example.com", name="他人"
+        )
+        report = await _create_report(db_session, user1)
+        token = create_access_token(user2.id)
+
+        async with _build_client(db_session, token=token) as client:
+            response = await client.patch(f"/api/v1/reports/{report.id}/submit")
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    async def test_存在しないIDで404エラーが返ること(self, db_session: AsyncSession):
+        user = await _create_user(db_session)
+        token = create_access_token(user.id)
+
+        async with _build_client(db_session, token=token) as client:
+            response = await client.patch("/api/v1/reports/99999/submit")
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+class TestReviewReport:
+    async def test_MANAGERがSUBMITTED日報を確認済みにできること(
+        self, db_session: AsyncSession
+    ):
+        user = await _create_user(db_session)
+        manager = await _create_user(
+            db_session,
+            email="manager@example.com",
+            name="部長",
+            role=UserRole.MANAGER,
+        )
+        report = await _create_report(
+            db_session, user, status_val=ReportStatus.SUBMITTED
+        )
+        token = create_access_token(manager.id)
+
+        async with _build_client(db_session, token=token) as client:
+            response = await client.patch(f"/api/v1/reports/{report.id}/review")
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()["data"]
+        assert data["id"] == report.id
+        assert data["status"] == "REVIEWED"
+
+    async def test_DRAFT日報を確認済みにすると409エラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await _create_user(db_session)
+        manager = await _create_user(
+            db_session,
+            email="manager@example.com",
+            name="部長",
+            role=UserRole.MANAGER,
+        )
+        report = await _create_report(db_session, user)
+        token = create_access_token(manager.id)
+
+        async with _build_client(db_session, token=token) as client:
+            response = await client.patch(f"/api/v1/reports/{report.id}/review")
+
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert response.json()["error"]["code"] == "CONFLICT"
+
+    async def test_SALESが確認済みにしようとすると403エラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await _create_user(db_session)
+        report = await _create_report(
+            db_session, user, status_val=ReportStatus.SUBMITTED
+        )
+        token = create_access_token(user.id)
+
+        async with _build_client(db_session, token=token) as client:
+            response = await client.patch(f"/api/v1/reports/{report.id}/review")
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    async def test_存在しないIDで404エラーが返ること(self, db_session: AsyncSession):
+        manager = await _create_user(
+            db_session,
+            email="manager@example.com",
+            name="部長",
+            role=UserRole.MANAGER,
+        )
+        token = create_access_token(manager.id)
+
+        async with _build_client(db_session, token=token) as client:
+            response = await client.patch("/api/v1/reports/99999/review")
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND

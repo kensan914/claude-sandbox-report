@@ -349,3 +349,112 @@ class TestDelete:
 
         with pytest.raises(ForbiddenError):
             await service.delete(report.id, user2)
+
+
+class TestSubmit:
+    async def test_DRAFT日報を提出できること(self, db_session: AsyncSession):
+        user = await _create_user(db_session)
+        report = await _create_report(db_session, user)
+        service = _build_service(db_session)
+
+        result = await service.submit(report.id, user)
+
+        assert result.status == ReportStatus.SUBMITTED
+        assert result.submitted_at is not None
+
+    async def test_SUBMITTED日報を提出するとConflictErrorが発生すること(
+        self, db_session: AsyncSession
+    ):
+        user = await _create_user(db_session)
+        report = await _create_report(db_session, user, status=ReportStatus.SUBMITTED)
+        service = _build_service(db_session)
+
+        with pytest.raises(ConflictError) as exc_info:
+            await service.submit(report.id, user)
+
+        assert "下書き" in exc_info.value.message
+
+    async def test_他人の日報を提出するとForbiddenErrorが発生すること(
+        self, db_session: AsyncSession
+    ):
+        user1 = await _create_user(db_session)
+        user2 = await _create_user(db_session, email="other@example.com", name="他人")
+        report = await _create_report(db_session, user1)
+        service = _build_service(db_session)
+
+        with pytest.raises(ForbiddenError) as exc_info:
+            await service.submit(report.id, user2)
+
+        assert "自分の日報" in exc_info.value.message
+
+    async def test_存在しないIDでNotFoundErrorが発生すること(
+        self, db_session: AsyncSession
+    ):
+        user = await _create_user(db_session)
+        service = _build_service(db_session)
+
+        with pytest.raises(NotFoundError):
+            await service.submit(99999, user)
+
+
+class TestReview:
+    async def test_MANAGERがSUBMITTED日報を確認済みにできること(
+        self, db_session: AsyncSession
+    ):
+        user = await _create_user(db_session)
+        manager = await _create_user(
+            db_session,
+            email="manager@example.com",
+            name="部長",
+            role=UserRole.MANAGER,
+        )
+        report = await _create_report(db_session, user, status=ReportStatus.SUBMITTED)
+        service = _build_service(db_session)
+
+        result = await service.review(report.id, manager)
+
+        assert result.status == ReportStatus.REVIEWED
+
+    async def test_DRAFT日報を確認済みにするとConflictErrorが発生すること(
+        self, db_session: AsyncSession
+    ):
+        user = await _create_user(db_session)
+        manager = await _create_user(
+            db_session,
+            email="manager@example.com",
+            name="部長",
+            role=UserRole.MANAGER,
+        )
+        report = await _create_report(db_session, user)
+        service = _build_service(db_session)
+
+        with pytest.raises(ConflictError) as exc_info:
+            await service.review(report.id, manager)
+
+        assert "提出済み" in exc_info.value.message
+
+    async def test_SALESが確認済みにするとForbiddenErrorが発生すること(
+        self, db_session: AsyncSession
+    ):
+        user = await _create_user(db_session)
+        report = await _create_report(db_session, user, status=ReportStatus.SUBMITTED)
+        service = _build_service(db_session)
+
+        with pytest.raises(ForbiddenError) as exc_info:
+            await service.review(report.id, user)
+
+        assert "上長のみ" in exc_info.value.message
+
+    async def test_存在しないIDでNotFoundErrorが発生すること(
+        self, db_session: AsyncSession
+    ):
+        manager = await _create_user(
+            db_session,
+            email="manager@example.com",
+            name="部長",
+            role=UserRole.MANAGER,
+        )
+        service = _build_service(db_session)
+
+        with pytest.raises(NotFoundError):
+            await service.review(99999, manager)
