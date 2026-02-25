@@ -174,6 +174,27 @@ class TestCreateComment:
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
+    async def test_content文字数超過で422エラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await create_user(db_session)
+        manager = await create_user(
+            db_session,
+            email="manager@example.com",
+            name="部長",
+            role=UserRole.MANAGER,
+        )
+        report = await _create_report(db_session, user)
+        token = create_access_token(manager.id)
+
+        async with build_client(db_session, token=token) as client:
+            response = await client.post(
+                f"/api/v1/reports/{report.id}/comments",
+                json={"target": "PROBLEM", "content": "あ" * 1001},
+            )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
     async def test_未認証で401エラーが返ること(self, db_session: AsyncSession):
         async with build_client(db_session) as client:
             response = await client.post(

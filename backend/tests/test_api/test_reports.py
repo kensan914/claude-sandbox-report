@@ -209,6 +209,88 @@ class TestCreateReport:
         assert error["code"] == "CONFLICT"
 
 
+    async def test_MANAGERが日報を作成すると403エラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        manager = await create_user(
+            db_session,
+            email="manager@example.com",
+            name="部長",
+            role=UserRole.MANAGER,
+        )
+        token = create_access_token(manager.id)
+
+        async with build_client(db_session, token=token) as client:
+            response = await client.post(
+                "/api/v1/reports",
+                json={
+                    "report_date": str(date.today()),
+                    "status": "DRAFT",
+                },
+            )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    async def test_problem文字数超過で422エラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await create_user(db_session)
+        token = create_access_token(user.id)
+
+        async with build_client(db_session, token=token) as client:
+            response = await client.post(
+                "/api/v1/reports",
+                json={
+                    "report_date": str(date.today()),
+                    "problem": "あ" * 2001,
+                    "status": "DRAFT",
+                },
+            )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    async def test_plan文字数超過で422エラーが返ること(self, db_session: AsyncSession):
+        user = await create_user(db_session)
+        token = create_access_token(user.id)
+
+        async with build_client(db_session, token=token) as client:
+            response = await client.post(
+                "/api/v1/reports",
+                json={
+                    "report_date": str(date.today()),
+                    "plan": "あ" * 2001,
+                    "status": "DRAFT",
+                },
+            )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    async def test_visit_content文字数超過で422エラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await create_user(db_session)
+        customer = await create_customer(db_session)
+        token = create_access_token(user.id)
+
+        async with build_client(db_session, token=token) as client:
+            response = await client.post(
+                "/api/v1/reports",
+                json={
+                    "report_date": str(date.today()),
+                    "status": "DRAFT",
+                    "visit_records": [
+                        {
+                            "customer_id": customer.id,
+                            "visit_content": "あ" * 1001,
+                            "visited_at": "10:00",
+                        }
+                    ],
+                },
+            )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
 class TestGetReportDetail:
     async def test_SALESが自分の日報詳細を取得できること(
         self, db_session: AsyncSession
@@ -331,6 +413,30 @@ class TestUpdateReport:
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
+    async def test_MANAGERが日報を更新すると403エラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await create_user(db_session)
+        manager = await create_user(
+            db_session,
+            email="manager@example.com",
+            name="部長",
+            role=UserRole.MANAGER,
+        )
+        report = await create_report(db_session, user)
+        token = create_access_token(manager.id)
+
+        async with build_client(db_session, token=token) as client:
+            response = await client.put(
+                f"/api/v1/reports/{report.id}",
+                json={
+                    "report_date": str(report.report_date),
+                    "status": "DRAFT",
+                },
+            )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
 
 class TestDeleteReport:
     async def test_DRAFT日報を削除できること(self, db_session: AsyncSession):
@@ -362,6 +468,24 @@ class TestDeleteReport:
         )
         report = await create_report(db_session, user1)
         token = create_access_token(user2.id)
+
+        async with build_client(db_session, token=token) as client:
+            response = await client.delete(f"/api/v1/reports/{report.id}")
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    async def test_MANAGERが日報を削除すると403エラーが返ること(
+        self, db_session: AsyncSession
+    ):
+        user = await create_user(db_session)
+        manager = await create_user(
+            db_session,
+            email="manager@example.com",
+            name="部長",
+            role=UserRole.MANAGER,
+        )
+        report = await create_report(db_session, user)
+        token = create_access_token(manager.id)
 
         async with build_client(db_session, token=token) as client:
             response = await client.delete(f"/api/v1/reports/{report.id}")
